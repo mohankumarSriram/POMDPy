@@ -21,8 +21,14 @@ from pomdpy.pomdp import Model, StepResult
 module = "PMModel"
 
 class PMModel(Model):
-    def __init__(self, problem_name="PredictiveMaintenance"):
-        super(PMModel, self).__init__(problem_name)
+    def __init__(self, args):
+        print('creating predictive maintanence model')
+        super(PMModel, self).__init__(args)
+        print('args', args)
+        self.observations = np.load(args['data_dir'])
+        self.cur_idx = 0
+        self.end_idx = len(self.observations)-1
+        print('Obtained observations:', self.observations.shape,'for predictive maintanence')
         self.num_states = 4
         self.num_actions = 2
         self.num_observations = 3 # Dataframe column size
@@ -72,7 +78,7 @@ class PMModel(Model):
 
     def get_all_observations(self):
         """
-        Returning the mean for all the 13 observations
+        Returning the mean for all the 3 observations
         :return:
         """
         return [0.5, 0.5, 0.5]
@@ -146,7 +152,7 @@ class PMModel(Model):
 
     ''' --------- BLACK BOX GENERATION --------- '''
 
-    def generate_step(self, state, action):
+    def generate_step(self, action, state=None):
         if action is None:
             print("ERROR: Tried to generate a step with a null action")
             return None
@@ -154,20 +160,17 @@ class PMModel(Model):
             action = PMAction(action)
 
         result = model.StepResult()
-        result.next_state, is_legal = self.make_next_state(state, action)
-        result.is_terminal = self.is_terminal(result.next_state)
+        result.is_terminal = self.make_next_state(action)
         result.action = action.copy()
-        result.observation = self.make_observation(action, result.next_state)
-        result.reward = self.make_reward(state, action, result.next_state, is_legal)
+        result.observation = self.make_observation(action)
+        result.reward = self.make_reward(action, result.is_terminal)
 
-        return result, is_legal
+        return result
 
-    @staticmethod
-    def make_next_state(state, action):            # Needs to return next_state and legal
-        if action.bin_number == ActionType.LISTEN:
-            return False
-        else:
-            return True
+    def make_next_state(self, action):
+        # Check if next observation is terminal and then decide.
+        if action.bin_number == ActionType.NO_REPAIR:
+            return self.cur_idx == self.end_idx-1 # Check if my current observation has reached the end of all possible observations
 
     def make_reward(self, action, is_terminal):
         """
@@ -176,42 +179,21 @@ class PMModel(Model):
         :return: reward
         """
 
-        if action.bin_number == ActionType.LISTEN:
-            return -1.0
-
-        if is_terminal:
-            assert action.bin_number > 0
-            if action.bin_number == self.tiger_door:
-                ''' You chose the door with the tiger '''
-                # return -20
-                return -20.
-            else:
-                ''' You chose the door with the prize! '''
-                return 10.0
-        else:
-            print("make_reward - Illegal action was used")
-            return 0.0
+        
 
     def make_observation(self, action):
         """
         :param action:
         :return:
         """
-        if action.bin_number > 0:
-            '''
-            No new information is gained by opening a door
-            Since this action leads to a terminal state, we don't care
-            about the observation
-            '''
-            return TigerObservation(None)
+        if action.bin_number == ActionType.REPAIR:
+            # Go back to the first observation
+            self.cur_idx = 0
         else:
-            obs = ([0, 1], [1, 0])[self.tiger_door == 1]
-            probability_correct = np.random.uniform(0, 1)
-            if probability_correct <= 0.85:
-                return TigerObservation(obs)
-            else:
-                obs.reverse()
-                return TigerObservation(obs)
+            self.cur_idx += 1
+
+        return self.observations[cur_idx]
+
 
     def belief_update(self, old_belief, action, observation):
         """

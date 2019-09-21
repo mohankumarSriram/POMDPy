@@ -4,6 +4,7 @@ from pomdpy import Agent
 from pomdpy.solvers import ValueIteration
 from pomdpy.log import init_logger
 from examples.tiger import TigerModel
+from examples.pred_maintanence import PMModel 
 import argparse
 import numpy as np
 
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon_decay', default=0.96, type=float)
     parser.add_argument('--epsilon_decay_step', default=75, type=int)
     parser.add_argument('--planning_horizon', default=5, type=int, help='Number of lookahead steps for value iteration')
+    parser.add_argument('--data_dir', default=None, help='Specify the .csv file location for CMAPS data')
 
     parser.set_defaults(use_tf=False)
     parser.set_defaults(save=False)
@@ -64,5 +66,9 @@ if __name__ == '__main__':
             env = TigerModel(args)
             agent = Agent(env, solver)
             agent.discounted_return()
+        elif args['env'] == 'PM':
+            env = PMModel(args)
+            #agent = Agent(env, solver)
+            #agent.discounted_return()
         else:
             print('Unknown env {}'.format(args['env']))

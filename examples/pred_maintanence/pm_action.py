@@ -1,3 +1,7 @@
+from __future__ import print_function
+from builtins import object
+from pomdpy.discrete_pomdp import DiscreteAction
+
 class ActionType(object):
     """
     Lists the possible actions and attributes an integer code to each for the Rock sample problem
@@ -10,7 +14,8 @@ class PMAction(DiscreteAction):
     -The Predictive Maintanence problem Action class
     -Handles pretty printing
     """
-    super(PMAction, self).__init__(action_type)
+    def __init__(self, action_type):
+        super(PMAction, self).__init__(action_type)
         self.bin_number = action_type
 
     def copy(self):
