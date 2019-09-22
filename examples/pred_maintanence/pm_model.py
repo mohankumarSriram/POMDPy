@@ -204,22 +204,23 @@ class PMModel(Model):
         :param observation:
         :return:
         """
-        if action > 1:
-            return old_belief
+        b_new_nonnormalized = []
+        L = len(self.get_all_states())
+        Z = self.get_observation_matrix()
+        T = self.get_transition_matrix()
+        
+        for s_prime in range(L):
+            p_o_prime = Z[action][s_prime]
+            summation = 0.0
+            for s in range(L):
+                p_s_prime = self.T[action][s][s_prime]
+                b_s = float(old_belief[s])
+                summation = summation + p_s_prime * b_s
+            b_new_nonnormalized.append(p_o_prime * summation)
 
-        probability_correct = 0.85
-        probability_incorrect = 1.0 - probability_correct
-        p1_prior = old_belief[0]
-        p2_prior = old_belief[1]
-
-        # Observation 1 - the roar came from door 0
-        if observation.source_of_roar[0]:
-            observation_probability = (probability_correct * p1_prior) + (probability_incorrect * p2_prior)
-            p1_posterior = old_div((probability_correct * p1_prior),observation_probability)
-            p2_posterior = old_div((probability_incorrect * p2_prior),observation_probability)
-        # Observation 2 - the roar came from door 1
-        else:
-            observation_probability = (probability_incorrect * p1_prior) + (probability_correct * p2_prior)
-            p1_posterior = probability_incorrect * p1_prior / observation_probability
-            p2_posterior = probability_correct * p2_prior / observation_probability
-        return np.array([p1_posterior, p2_posterior])
+        # normalize
+        b_new = []
+        total = sum(b_new_nonnormalized)
+        for b_s in b_new_nonnormalized:
+            b_new.append([b_s/total])
+        return np.array(b_new)
